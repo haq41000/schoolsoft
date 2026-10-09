@@ -39,8 +39,14 @@ function fm(n){return D.currency+" "+Number(n).toLocaleString()}
 function today(){return new Date().toISOString().slice(0,10)}
 function cn(id){var c=D.classes.filter(function(x){return x.id==id})[0];return c?c.name:"-"}
 function pend(sid){var a=0;D.charges.forEach(function(c){if(c.sid==sid)a+=c.amt});D.pays.forEach(function(p){if(p.sid==sid)a-=p.amt+p.disc});return a}
+var PUB={"kty":"EC","x":"8lld6xSOyXo-ETYMPAfobYVR1Kat6xFYawaVe6NMLVE","y":"nrY8aeIczGMQ6e1DVgtsZlU_DfSGA6Y6wv-09Jz7lQw","crv":"P-256"},LIC=false;
+function devId(){try{var d=localStorage.getItem("schoolsoft_dev");if(!d){var a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",x="";for(var i=0;i<12;i++)x+=a[Math.floor(Math.random()*a.length)];d=x.slice(0,4)+"-"+x.slice(4,8)+"-"+x.slice(8);localStorage.setItem("schoolsoft_dev",d)}return d}catch(e){return"NO-STORAGE"}}
+function b2u(s){s=s.replace(/-/g,"+").replace(/_/g,"/");var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+async function vlic(k){try{var key=await crypto.subtle.importKey("jwk",PUB,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);return await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},key,b2u(k.trim()),new TextEncoder().encode("SCHOOL|"+devId()))}catch(e){return false}}
+async function actv(){var k=$("lk").value.trim();if(await vlic(k)){try{localStorage.setItem("schoolsoft_lic",k)}catch(e){}LIC=true;R()}else M("This key is not correct for this device. Please copy the full key again.")}
+async function initLic(){var k="";try{k=localStorage.getItem("schoolsoft_lic")||""}catch(e){}LIC=k?await vlic(k):false;R()}
 function R(){
- var a=$("app");if(D){["att","staff","spay","exams","marks","exp"].forEach(function(k){if(!D[k])D[k]=[]});if(!D.gs)D.gs="80:A+,70:A,60:B,50:C,40:D,0:F";if(D.pass==null)D.pass=40}
+ var a=$("app");if(!LIC){a.innerHTML='<main><h1>Activate SchoolSoft</h1><div class="c"><h2>Your Device ID</h2><p style="font-size:22px;color:var(--tx)"><b>'+devId()+'</b></p><p>Send this Device ID to Haq on WhatsApp to get your activation key.</p><label>Activation key</label><textarea id="lk" rows="4"></textarea><button onclick="actv()">Activate</button><div id="m" class="m"></div></div></main>';return}if(D){["att","staff","spay","exams","marks","exp"].forEach(function(k){if(!D[k])D[k]=[]});if(!D.gs)D.gs="80:A+,70:A,60:B,50:C,40:D,0:F";if(D.pass==null)D.pass=40}
  if(!D){a.innerHTML='<main><h1>Welcome to SchoolSoft</h1><div class="c"><h2>First-time setup</h2><label>School name</label><input id="n"><label>Create admin password (min 6)</label><input id="p" type="password"><label>Repeat password</label><input id="p2" type="password"><button onclick="setup()">Save and start</button><div id="m" class="m"></div><p>Currency: PKR</p></div></main>';return}
  if(!auth){a.innerHTML='<main><h1>'+E(D.school)+'</h1><div class="c"><h2>Login</h2><label>Admin password</label><input id="p" type="password"><button onclick="login()">Login</button><div id="m" class="m"></div></div></main>';return}
  var nav=[["dash","Dashboard"],["stu","Students"],["add","New Admission"],["att","Attendance"],["fee","Fee Collection"],["rec","Receipts"],["exm","Exams & Results"],["stf","Staff & Salary"],["exp","Expenses / Cashbook"],["cls","Classes"],["bak","Backup / Restore"],["set","Settings"]];
@@ -96,6 +102,6 @@ async function chPw(){if(!await chk("o"))return M("Current password is wrong.");
 function vBak(){return'<h1>Backup / Restore</h1><div class="c"><h2>Backup</h2><p>Tap Copy, then paste it into WhatsApp (Saved Messages) or a Notes app to keep it safe.</p><button onclick="bk()">Copy backup</button><textarea id="bt" rows="4" readonly></textarea></div><div class="c"><h2>Restore</h2><p>This replaces all current data. Enter password first.</p><textarea id="rt" rows="4" placeholder="Paste backup here"></textarea><label>Admin password</label><input id="rp" type="password"><button class="s" onclick="rs()">Restore backup</button><div id="m" class="m"></div></div>'}
 function bk(){var t=JSON.stringify(D);$("bt").value=t;try{navigator.clipboard.writeText(t).then(function(){alert("Backup copied.")},function(){$("bt").select()})}catch(e){$("bt").select()}}
 async function rs(){if(!await chk("rp"))return M("Wrong password.");try{var x=JSON.parse($("rt").value);if(!x.students||!x.pays||!x.salt)throw 1;if(!confirm("Replace ALL current data with this backup?"))return;D=x;sv();auth=false;R()}catch(e){M("This is not a valid backup.")}}
-ld();R();
+ld();initLic();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
 </script></body></html>
